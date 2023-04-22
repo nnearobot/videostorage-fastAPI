@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 import aiofiles
-from fastapi import APIRouter, Depends, UploadFile, status
+from fastapi import APIRouter, Depends, UploadFile, status, Response
 from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import insert, select, update
@@ -40,7 +40,7 @@ async def list_uploaded_files(pagination: Paginator = Depends(Paginator), sessio
 
 # UPLOAD FILE
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def upload_file(file: UploadFile, session: AsyncSession = Depends(get_async_session)):
+async def upload_file(file: UploadFile, response: Response, session: AsyncSession = Depends(get_async_session)):
     # Check if file is provided:
     if not file:
         raise HTTPException(
@@ -123,10 +123,9 @@ async def upload_file(file: UploadFile, session: AsyncSession = Depends(get_asyn
     await session.execute(stmt)
     await session.commit()
 
-    return {
-        "Description": "File uploaded",
-        "Location": "{}/{}".format(ROUT_PREFIX, file_id)
-    }
+    response.headers["Location"] = "{}/{}".format(ROUT_PREFIX, file_id)
+
+    return "File uploaded"
 
 
 # DOWNLOAD FILE

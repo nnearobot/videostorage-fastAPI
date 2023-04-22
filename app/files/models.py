@@ -1,11 +1,9 @@
 from datetime import datetime
 
-from sqlalchemy import (TIMESTAMP, Boolean, Column, Index, Integer, MetaData,
+from sqlalchemy import (TIMESTAMP, Boolean, Column, Index, Integer,
                         String, Table)
 
-from app.database import Base
-
-metadata = MetaData()
+from app.database import metadata
 
 file_table = Table(
     "files",

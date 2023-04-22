@@ -26,7 +26,7 @@ router = APIRouter(
 # LIST FILES
 @router.get("/", response_model=list[FileList], status_code=status.HTTP_200_OK)
 async def list_uploaded_files(pagination: Paginator = Depends(Paginator), session: AsyncSession = Depends(get_async_session)) -> list[FileList]:
-    query = select(file_table)
+    query = select(file_table).filter(file_table.c.deleted == False)
     if pagination.limit > 0:
         query = query.offset(pagination.skip).limit(pagination.limit)
     result = await session.execute(query)

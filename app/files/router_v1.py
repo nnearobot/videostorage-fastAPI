@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import (ALLOWED_FILE_MAX_SIZE, ALLOWED_FILE_TYPES, CHUNK_SIZE,
                         STORAGE_DIR)
 from app.database import get_async_session
-from app.files.models import file
+from app.files.models import file_table
 from app.files.schemas_v1 import FileList
 from app.utils import Paginator
 
@@ -26,7 +26,7 @@ router = APIRouter(
 # LIST FILES
 @router.get("/", response_model=list[FileList], status_code=status.HTTP_200_OK)
 async def list_uploaded_files(pagination: Paginator = Depends(Paginator), session: AsyncSession = Depends(get_async_session)) -> list[FileList]:
-    query = select(file)
+    query = select(file_table)
     if pagination.limit > 0:
         query = query.offset(pagination.skip).limit(pagination.limit)
     result = await session.execute(query)
@@ -40,23 +40,23 @@ async def list_uploaded_files(pagination: Paginator = Depends(Paginator), sessio
 
 # UPLOAD FILE
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def upload_file(uploaded_file: UploadFile, session: AsyncSession = Depends(get_async_session)):
+async def upload_file(file: UploadFile, session: AsyncSession = Depends(get_async_session)):
     # Check if file is provided:
-    if not uploaded_file:
+    if not file:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Bad request"
         )
 
     # Check if file is of supported media type:
-    if len(ALLOWED_FILE_TYPES) > 0 and uploaded_file.content_type not in ALLOWED_FILE_TYPES:
+    if len(ALLOWED_FILE_TYPES) > 0 and file.content_type not in ALLOWED_FILE_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail="Unsupported Media Type"
         )
 
     # Check if file is not too large:
-    if ALLOWED_FILE_MAX_SIZE > 0 and uploaded_file.size > ALLOWED_FILE_MAX_SIZE:
+    if ALLOWED_FILE_MAX_SIZE > 0 and file.size > ALLOWED_FILE_MAX_SIZE:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="File is too large"
@@ -66,7 +66,7 @@ async def upload_file(uploaded_file: UploadFile, session: AsyncSession = Depends
     # If uploaded file has a name that already exists in a DB, then make a different fileid.
 
     # Check if the file with a specified fileid not yet exists in DB:
-    file_id = uploaded_file.filename
+    file_id = file.filename
     file_db = await get_by_fileid(file_id, session)
     if file_db != None:
         # If we prefer to raise an exception about the file with the same name, uncomment lines below:
@@ -78,7 +78,7 @@ async def upload_file(uploaded_file: UploadFile, session: AsyncSession = Depends
         """
         # Make a new fileid by adding a '_1' to the file name.
         # If new fileid is also exists in DB, make a new one by adding a '_2' and so on.
-        splitted_filename = os.path.splitext(uploaded_file.filename)
+        splitted_filename = os.path.splitext(file.filename)
         count = 1
         while True:
             new_file_id = "{}_{}{}".format(splitted_filename[0], count, splitted_filename[1])
@@ -98,7 +98,7 @@ async def upload_file(uploaded_file: UploadFile, session: AsyncSession = Depends
     hash = hashlib.sha256()
     try:
         async with aiofiles.open(save_path, 'wb') as f:
-            while chunk := uploaded_file.file.read(CHUNK_SIZE):
+            while chunk := file.file.read(CHUNK_SIZE):
                 hash.update(chunk)
                 await f.write(chunk)
     except Exception:
@@ -107,17 +107,17 @@ async def upload_file(uploaded_file: UploadFile, session: AsyncSession = Depends
             detail="There was an error uploading the file"
         )
     finally:
-        await uploaded_file.close()
+        await file.close()
 
     # Now save the data to the DB:
-    stmt = insert(file).values(
+    stmt = insert(file_table).values(
         fileid=file_id,
         path=new_filename,
         # we going to restore this file name when download the file
-        name=uploaded_file.filename,
-        size=uploaded_file.size,
+        name=file.filename,
+        size=file.size,
         checksum=hash.hexdigest(),
-        mime=uploaded_file.content_type,
+        mime=file.content_type,
         created_at=datetime.now()
     )
     await session.execute(stmt)
@@ -163,9 +163,9 @@ async def delete_file(fileid: str, session: AsyncSession = Depends(get_async_ses
 
     # Update a DB - mark the record deleted:
     stmt = (
-        update(file)
+        update(file_table)
         .values(deleted=True)
-        .where(file.c.fileid == fileid)
+        .where(file_table.c.fileid == fileid)
     )
     await session.execute(stmt)
     await session.commit()
@@ -173,6 +173,6 @@ async def delete_file(fileid: str, session: AsyncSession = Depends(get_async_ses
 
 
 async def get_by_fileid(fileid: str, session: AsyncSession = Depends(get_async_session)):
-    query = select(file).filter(file.c.fileid == fileid, file.c.deleted == False)
+    query = select(file_table).filter(file_table.c.fileid == fileid, file_table.c.deleted == False)
     result = await session.execute(query)
     return result.first()

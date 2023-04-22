@@ -7,7 +7,7 @@ from app.database import Base
 
 metadata = MetaData()
 
-file = Table(
+file_table = Table(
     "files",
     metadata,
     Column("id", Integer, primary_key=True),

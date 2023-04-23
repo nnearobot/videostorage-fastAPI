@@ -40,7 +40,7 @@ async def list_uploaded_files(pagination: Paginator = Depends(Paginator), sessio
 
 # UPLOAD FILE
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def upload_file(response: Response, data: UploadFile = File(...), session: AsyncSession = Depends(get_async_session)):
+async def upload_file(data: UploadFile, response: Response, session: AsyncSession = Depends(get_async_session)):
     # Check if file is provided:
     if not data:
         raise HTTPException(
@@ -92,16 +92,9 @@ async def upload_file(response: Response, data: UploadFile = File(...), session:
     new_filename = "{}_{}".format(datetime.now().strftime("%Y%m%d_%H%M%S"), file_id)
     save_path = os.path.join(STORAGE_DIR, new_filename)
 
-    # Trying simple file save:
-    with open(save_path, 'wb') as f:
-        f.write(data.file.read())
-        
-    hash = ""
-
     # We going to use Apache2 library aiofiles for asynchronous versions of files,
     # that support delegating operations to a separate thread pool.
     # Also we going to calculate the checksum of the file for integrity checking purpoise.
-    """
     hash = hashlib.sha256()
     try:
         async with aiofiles.open(save_path, 'wb') as f:
@@ -115,10 +108,6 @@ async def upload_file(response: Response, data: UploadFile = File(...), session:
         )
     finally:
         await data.close()
-    
-    hash = hash.hexdigest()
-
-    """
 
     # Now save the data to the DB:
     stmt = insert(file_table).values(
@@ -127,7 +116,7 @@ async def upload_file(response: Response, data: UploadFile = File(...), session:
         # we going to restore this file name when download the file
         name=data.filename,
         size=data.size,
-        checksum=hash,
+        checksum=hash.hexdigest(),
         mime=data.content_type,
         created_at=datetime.now()
     )

@@ -6,10 +6,10 @@ app = FastAPI(
     title="Video Storage Server API"
 )
 
-@app.get("/readyz", status_code=status.HTTP_200_OK)
+
+@app.get("/v1/readyz", status_code=status.HTTP_200_OK)
 def is_ready():
     return {"Description": "OK"}
-
 
 app.include_router(file_router_v1)
 app.include_router(file_router_v1, prefix="/v1")

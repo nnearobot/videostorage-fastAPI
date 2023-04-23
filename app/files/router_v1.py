@@ -24,7 +24,7 @@ router = APIRouter(
 )
 
 # LIST FILES
-@router.get("/", response_model=list[FileList], status_code=status.HTTP_200_OK)
+@router.get("", response_model=list[FileList], status_code=status.HTTP_200_OK)
 async def list_uploaded_files(pagination: Paginator = Depends(Paginator), session: AsyncSession = Depends(get_async_session)) -> list[FileList]:
     query = select(file_table).filter(file_table.c.deleted == False)
     if pagination.limit > 0:
@@ -39,7 +39,7 @@ async def list_uploaded_files(pagination: Paginator = Depends(Paginator), sessio
 
 
 # UPLOAD FILE
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def upload_file(file: UploadFile, response: Response, session: AsyncSession = Depends(get_async_session)):
     # Check if file is provided:
     if not file:

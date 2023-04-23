@@ -12,6 +12,8 @@ alembic = "*"
 asyncpg = "*"
 datetime = "*"
 aiofiles = "*"
+pytest = "*"
+pytest-asyncio = "*"
 
 [dev-packages]
 autopep8 = "*"
